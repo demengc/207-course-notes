@@ -199,6 +199,22 @@ For example, which principles align with how Java requires the parent's construc
 
 Each time you encounter new code or a UML class diagram, you should begin to assess its design through this new perspective based on the SOLID principles.
 
+<details>
+<summary>Completed answer: Java features and SOLID</summary>
+
+Java provides tools that support SOLID designs, but the compiler does not enforce the principles themselves.
+
+| Java feature | Related principles | Reasoning and limits |
+| --- | --- | --- |
+| Calling the superclass constructor | LSP | The superclass can initialize its own state and enforce its invariants before subclass construction finishes. This supports valid subtype objects, but does not stop an override from breaking a behavioural contract. A `Square` can still violate independent width/height setters after construction. |
+| Generics, such as `List<T>` or `<T extends Comparable<T>>` | OCP, DIP | A generic algorithm can work with additional types without changing its body. A bound such as `Comparable<T>` lets it depend on an abstraction rather than concrete element classes. Generics alone do not guarantee either principle: a bound can also name a concrete class. |
+| `private` fields and methods | SRP, OCP | Hiding implementation details prevents clients from coupling directly to them and permits internal changes behind a stable API. It does not give the class a single reason to change; an oversized class can still have only private fields. |
+| Interfaces as reference and parameter types | DIP, OCP | A client can depend on a contract and accept new implementations without type-specific edits. `Manager` holding an `IWorker` is the example in Exercise 15. Wiring code still chooses the concrete implementation. |
+| Small, client-specific interfaces | ISP | A client needing only work behaviour can use `IWorker.work()` without depending on unrelated operations. Merely using an interface is insufficient if that interface bundles irrelevant methods. |
+| Method overriding and interface implementation | LSP | Java checks compatible method signatures, but programmers must preserve the promised behaviour. An implementation must not reject inputs the contract permits or fail to provide outcomes the contract promises. |
+
+</details>
+
 ## 9.4. Exercises: applying the principles
 
 ### Applying the DIP in code
@@ -220,6 +236,17 @@ Practice the Dependency Inversion Principle with this exercise under the
   `IWorker` that did not exist when `Manager` was written — that is the payoff of
   depending on an abstraction.
 
+<details>
+<summary>Completed answer: dependency inversion</summary>
+
+In [Manager.java](exercises/ex15-dependency-inversion/src/main/java/Manager.java), the field is an `IWorker`, and `setWorker` stores the supplied object. `manage()` calls that object's `work()` method.
+
+The source dependencies are `Manager → IWorker`, `Worker → IWorker`, and `SuperWorker → IWorker`. `Manager` names neither concrete worker. This applies DIP, and supports OCP: a new `IWorker` implementation requires no change to `Manager`. Supplying the object through the setter is dependency injection; depending on the interface is the dependency-inversion choice.
+
+No second field, overloaded setter, cast, or worker-type condition is needed. The existing tests cover a regular worker, a super worker, switching workers, and a lambda implementation defined outside `Manager`.
+
+</details>
+
 ### Which principle is violated?
 
 Consider this class:
@@ -233,6 +260,23 @@ public class Report {
 ```
 
 Which SOLID principle is most clearly violated here, and how would you fix it?
+
+<details>
+<summary>Completed answer: Report responsibilities</summary>
+
+`Report` most clearly violates SRP because report content, file storage, and email delivery can change for separate reasons.
+
+| Class | Responsibility | Reason to change |
+| --- | --- | --- |
+| `Report` | Generate report text | Changes to report content or formatting requirements |
+| `ReportFileWriter` | Write supplied text to a file | Changes to file-storage requirements |
+| `ReportEmailer` | Send supplied text by email | Changes to email-delivery requirements |
+
+The calling code generates the text and passes it to the required output object. The writer and emailer do not generate their own versions of the report.
+
+If the caller needs interchangeable output destinations, define a `ReportOutput` interface and have both output classes implement it. A caller depending on that interface applies DIP and can accept new output implementations without changing its delivery logic, supporting OCP. Splitting the three responsibilities addresses SRP even without that extra interface.
+
+</details>
 
 <details>
 <summary>Show answer</summary>
