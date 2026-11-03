@@ -40,6 +40,15 @@ Now that we’ve seen how layered architectures can naturally separate policies 
 
 > Thought Question: What might a “policy” look like in your code? Is it a method, a class, a rule enforced by a conditional, or something else? 
 
+<details>
+<summary>Completed answer: policies in code</summary>
+
+A policy is a rule that can take several forms in Java. A conditional can reject a renewal when another member has a hold, and a method can enforce that rule on every renewal attempt. A class can keep the state and operations needed to preserve related invariants.
+
+Where a rule belongs depends on its responsibility. An entity can enforce an account's overdraft limit, while a use case coordinates loading the account, requesting a withdrawal, and saving the result. Reading the amount from a Swing text field belongs in the input layer. Putting these responsibilities in one button listener would couple the banking rules to Swing.
+
+</details>
+
 ## 10.1. Event-driven programming: a network of objects
 
 Modern programs often respond to user actions—clicks, keystrokes, and other interactions. These are called events, and programs that react to them are known as event-driven.
@@ -51,6 +60,13 @@ This chain creates a network of objects, where each method call represents a con
 To support new user interactions, we write new event listeners and define how they should respond. This connects the user input to the logic that drives our application.
 
 > Review Question: Is an event listener a low-level or high-level policy?
+
+<details>
+<summary>Completed answer: event listeners</summary>
+
+An event listener is low level because it handles input from a specific UI mechanism. A Swing listener reads the relevant fields and delegates to a controller. Business rules belong behind that controller so the same operation can run from a command-line interface or a test without creating Swing components.
+
+</details>
 
 ## 10.2. Layers and coupling
 
@@ -69,6 +85,15 @@ A **model** is how you choose to represent the data in the program, such as crea
 Models are an important concept, because the entities represent how to think about the data being manipulated. It's particularly important (for testability and maintainability) that models not have any dependencies on the UI layer or the database layer. That means they entities can't mention any classes that you defined in those layers.
 
 > Review Question: What level of policies do entities represent?
+
+<details>
+<summary>Completed answer: entities and coupling</summary>
+
+Entities represent high-level domain policies. Their invariants should hold regardless of the screen, database, or application workflow that uses them. A `Book` entity should not import `JButton` or a database connection class.
+
+Low coupling means a change to one component requires few changes elsewhere. High cohesion means a component's responsibilities belong together. Naming a package `model` does not provide either benefit if its classes still mix domain rules, SQL, and UI updates. The code must respect the layers' dependency boundaries.
+
+</details>
 
 Here are a few _architecture patterns_, or ways to think about the organization of a program. You'll encounter these if you start following software design blogs. These are roughly in chronological order for when they were popular:
 
@@ -142,3 +167,20 @@ We'll explore Clean Architecture in more detail in the next chapter, as it will 
 
 > Thought Question: Recall that computer architecture also has a layered structure to it as we saw earlier, with applications built on top of the operating system, which is built on top of the hardware.
 > You'll find that the idea of layers shows up in many system design contexts. What is it about organizing systems in this way that makes it such a common design?
+
+<details>
+<summary>Completed answer: why layers help</summary>
+
+A layer's contract lets callers use it without understanding its implementation. As long as the contract holds, implementations can change independently and tests can substitute another implementation at the boundary.
+
+Each extra layer adds interfaces, data conversions, and wiring, so weigh that cost against the separation it provides. Separate packages alone do not remove coupling: a domain class that imports a UI class still depends on the UI. Operating-system layers illustrate abstraction; Clean Architecture also requires source dependencies to point toward policy.
+
+| Pattern in this chapter | Handles user input | Updates the display | Separation to remember |
+| --- | --- | --- | --- |
+| MVC | View listener delegates to Controller | View observes Model changes and reads Model state | In the illustrated variant, View reads Model directly |
+| MVP | View listener delegates to Presenter | Presenter tells View what to display | Presenter mediates between View and Model |
+| Clean Architecture | View delegates to Controller, which calls an Input Boundary | Interactor calls an Output Boundary; Presenter updates View Model | Use cases know neither concrete UI nor storage classes |
+
+MVC and MVP have variants. A notification from Model to View need not mean a dependency on a concrete View class; an observer interface can separate them. Runtime information flow alone does not establish the direction of source dependencies.
+
+</details>

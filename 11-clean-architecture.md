@@ -22,6 +22,17 @@ The Clean Architecture has one rule, called the **"Dependency Rule"**. This rule
 
 > Review Question: Why shouldn't a high-level policy depend on a low-level policy?
 
+<details>
+<summary>Completed answer: protect policy from details</summary>
+
+A business rule should not need to change when the UI toolkit or storage mechanism changes. Depending directly on Swing or a concrete SQL repository would also make the rule harder to test without those tools.
+
+The use case defines an interface with the operations it needs, such as `findById` and `save`. Storage implementations depend on this contract, so the use case can work with files, a database, or an in-memory test double.
+
+The Dependency Rule concerns source-code dependencies: imports, field types, parameter types, return types, inheritance, and other references to named types. Runtime calls can travel outward through an interface owned by an inner layer.
+
+</details>
+
 This is often visualized through the following concentric ring diagram. The highest-level policies, the Entities, are at the core of the architecture, with the lowest-level policies, the Frameworks and Drivers, on the outside of the architecture.
 
 ![](https://blog.cleancoder.com/uncle-bob/images/2012-08-13-the-clean-architecture/CleanArchitecture.jpg)
@@ -38,6 +49,21 @@ In the CA book, a typical scenario is presented. Below is a UML class diagram fo
 When we create instances of the various classes shown above and connect them together, we are constructing what we will refer to as our "CA engine".
 
 > Thought Question: Take a minute to study the diagram. Can you identify where the DIP has been applied to ensure that we are following the Dependency Rule?
+
+<details>
+<summary>Completed answer: boundary ownership and dependency inversion</summary>
+
+| Use-case interface | Caller | Implementation | Source dependency |
+| --- | --- | --- | --- |
+| Input Boundary | Controller | Use Case Interactor | Controller depends inward on the use-case contract |
+| Output Boundary | Use Case Interactor | Presenter | Presenter implements the use-case contract; Interactor does not name Presenter |
+| Data Access Interface | Use Case Interactor | Data Access | Data Access implements the use-case contract; Interactor does not name the storage implementation |
+
+The output and storage boundaries show dependency inversion directly. At runtime, the Interactor calls an object in an outer layer. Its source code refers only to the interface in the Use Case layer, which both the Interactor and the outer implementation depend on.
+
+Input Data and Output Data also belong to the Use Case layer. Their fields should use types suitable for the use case, such as IDs, dates, and amounts, rather than Swing events, database rows, or framework response objects. Moving an interface inward does not help if its method signatures still require outer-layer types.
+
+</details>
 
 ## 11.3. Clean Architecture By Layer
 Before we fully talk through how we construct the CA engine and trace the flow of control, let's quickly look at all the pieces that make up our CA engine. Refer to the diagram as you read about each piece. 
@@ -89,6 +115,29 @@ The following diagram is the same one we just looked at, but with the flow of co
 
 ![](images/Clean_Architecture_Typical_Scenario_Diagram_with_flow.png)
 
+<details>
+<summary>Completed walk-through: renew a library loan</summary>
+
+Assume this example rejects a renewal when another member has a hold. Other renewal rules would need their own requirements.
+
+| Step | Interaction | Data or responsibility |
+| --- | --- | --- |
+| 1 | View calls Controller | Pass the member ID and item ID from the UI |
+| 2 | Controller calls Input Boundary | Build renewal Input Data and call `execute(inputData)` |
+| 3 | Interactor calls Data Access Interface | Load the item, its current loan, and the holds needed to decide eligibility |
+| 4 | Data Access queries storage | Convert stored records into the domain objects required by the interface |
+| 5 | Interactor uses Entities | Check loan ownership and ask the domain objects to enforce renewal eligibility; persist the changed loan through the Data Access Interface on success |
+| 6 | Interactor calls Output Boundary | Supply either a successful renewal result with its due date or a rejection result |
+| 7 | Presenter updates View Model | Format the date or rejection message, then notify the observing View |
+
+A hold by another member causes rejection without saving a renewed due date. The Presenter formats the rejection; it does not decide eligibility. A View Model contains display state, not the domain model, and the View does not need a live loan entity to render the result.
+
+Test the use case with an in-memory Data Access implementation and an Output Boundary that records the result. A permitted renewal should save the expected loan; a blocked renewal should report rejection and leave the due date unchanged. Neither test needs a window or a real database.
+
+Handle storage failures explicitly so a failed save cannot produce a success result.
+
+</details>
+
 ### Step 1: View -> Controller
 - the user interacts with the View, triggering an event that contains input from the user that is passed to the Controller.
 
@@ -114,6 +163,15 @@ The following diagram is the same one we just looked at, but with the flow of co
 
 > Thought Question: Note how we never actually return anything to the Controller. What does this suggest about the return type of the method defined by the Input Boundary?
 
+<details>
+<summary>Completed answer: Input Boundary return type</summary>
+
+The method returns `void` in this design, for example `void execute(RenewInputData inputData)`. Results go through the Output Boundary to the Presenter instead of returning to the Controller. Both successful and rejected requests need a defined output path.
+
+`void` does not imply asynchronous execution. The Controller's call can remain on the stack while the Interactor calls the Presenter, then return normally when that work finishes. Other architectures can return a result object, but that is not the interaction shown here.
+
+</details>
+
 ## 11.5. The Main Component
 
 We now know the structure of the classes and interfaces involved, as well as how information flows through our CA engine, but how do we actually build our CA engine in the first place.
@@ -128,5 +186,42 @@ What this means is that we can create a different main component, sometimes call
 
 > Thought Question: Can you imagine how the code for constructing the CA engine might look in practice? We'll see concrete code examples soon, but for now it is a good exercise to think through your mental model of how our above conceptual discussion and the high-level UML class diagram of the CA engine might turn into concrete code.
 
+<details>
+<summary>Completed answer: assemble the objects in main</summary>
+
+Create each dependency before the object that needs it, then pass it into the constructor. This wiring example assumes the classes and constructors already exist; it is not a standalone program.
+
+```java
+RenewViewModel viewModel = new RenewViewModel();
+RenewOutputBoundary presenter = new RenewPresenter(viewModel);
+RenewDataAccess dataAccess = new FileRenewDataAccess("loans.json");
+RenewInputBoundary interactor = new RenewInteractor(dataAccess, presenter);
+RenewController controller = new RenewController(interactor);
+RenewView view = new RenewView(controller, viewModel);
+view.show();
+```
+
+The Interactor constructor accepts two Use Case interfaces, `RenewDataAccess` and `RenewOutputBoundary`. The Controller constructor accepts `RenewInputBoundary`. Neither class constructs its concrete dependencies.
+
+The View must observe the same View Model that the Presenter updates. Separate View Models would disconnect them. In Swing, create and show the UI on the event dispatch thread.
+
+Main is the composition root, where the program chooses and connects concrete implementations. It knows about outer details, so keep it outside the inner layers. If a database repository satisfies the same data-access contract as the file repository, switching between them requires changes to the wiring but not the renewal rules.
+
+</details>
+
 > Thought Question: Can you identify specific aspects of the design of the Clean Architecture that remind you of each SOLID principle?
- 
+
+<details>
+<summary>Completed answer: SOLID in Clean Architecture</summary>
+
+| Principle | Application | What still needs checking |
+| --- | --- | --- |
+| SRP | Entities enforce domain rules, Interactors coordinate use cases, Presenters format results, and Data Access handles persistence | A class can still mix responsibilities despite being in a correctly named layer |
+| OCP | A new storage implementation can satisfy the existing Data Access Interface without editing the Interactor | New business requirements may require changes to the use case or its contract |
+| LSP | A test repository and a production repository must satisfy the same promised behaviour | Matching method signatures is insufficient; missing-item behaviour and save semantics must also match the contract |
+| ISP | Each use case requests the data-access and output operations it actually needs | One large interface for every use case can create unrelated dependencies |
+| DIP | Interactors depend on output and data-access interfaces in the Use Case layer, which outer classes implement | Passing concrete dependencies through constructors is injection, but does not by itself establish dependency inversion |
+
+The architecture supports SOLID; package structure and interface declarations alone do not guarantee it.
+
+</details>
