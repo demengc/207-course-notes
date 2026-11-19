@@ -1688,6 +1688,21 @@ if __name__ == '__main__':
 The reason, however, is different. Can you draw the memory model for this code,
 and explain why it also fails to increase `cost`? The diagram will *not* be the same.
 
+<details>
+<summary>Python argument binding</summary>
+
+```text
+On entry to increase:          After i = i + 1000:
+module:   cost ─┐              module:   cost ───→ int(14)
+                ├→ int(14)
+increase: i ────┘              increase: i ──────→ int(1014)
+```
+
+Integers are immutable. The assignment binds only the local `i` to `1014`, so
+`print(cost)` still prints `14`.
+
+</details>
+
 How can we use a method to change the value of `cost`?
 In either programming language, we use the same approach:
 Return the changed value and have the calling code assign it

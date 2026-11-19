@@ -23,13 +23,15 @@ The Clean Architecture has one rule, called the **"Dependency Rule"**. This rule
 > Review Question: Why shouldn't a high-level policy depend on a low-level policy?
 
 <details>
-<summary>Completed answer: protect policy from details</summary>
+<summary>Keep business rules independent of tools</summary>
 
-A business rule should not need to change when the UI toolkit or storage mechanism changes. Depending directly on Swing or a concrete SQL repository would also make the rule harder to test without those tools.
+A rule that names Swing or a concrete SQL repository may need edits when those
+tools change and is harder to test without them. Let the use case define
+`findById` and `save`. A file repository, database repository, or in-memory test
+double can implement them.
 
-The use case defines an interface with the operations it needs, such as `findById` and `save`. Storage implementations depend on this contract, so the use case can work with files, a database, or an in-memory test double.
-
-The Dependency Rule concerns source-code dependencies: imports, field types, parameter types, return types, inheritance, and other references to named types. Runtime calls can travel outward through an interface owned by an inner layer.
+The Dependency Rule governs source references such as imports, named types, and
+inheritance. A runtime call can go outward through an inner layer's interface.
 
 </details>
 
@@ -51,17 +53,21 @@ When we create instances of the various classes shown above and connect them tog
 > Thought Question: Take a minute to study the diagram. Can you identify where the DIP has been applied to ensure that we are following the Dependency Rule?
 
 <details>
-<summary>Completed answer: boundary ownership and dependency inversion</summary>
+<summary>Who owns and implements each boundary</summary>
 
-| Use-case interface | Caller | Implementation | Source dependency |
-| --- | --- | --- | --- |
-| Input Boundary | Controller | Use Case Interactor | Controller depends inward on the use-case contract |
-| Output Boundary | Use Case Interactor | Presenter | Presenter implements the use-case contract; Interactor does not name Presenter |
-| Data Access Interface | Use Case Interactor | Data Access | Data Access implements the use-case contract; Interactor does not name the storage implementation |
+| Interface owned by the Use Case layer | Caller | Implementation |
+| --- | --- | --- |
+| Input Boundary | Controller | Use Case Interactor |
+| Output Boundary | Use Case Interactor | Presenter |
+| Data Access Interface | Use Case Interactor | Data Access |
 
-The output and storage boundaries show dependency inversion directly. At runtime, the Interactor calls an object in an outer layer. Its source code refers only to the interface in the Use Case layer, which both the Interactor and the outer implementation depend on.
+At runtime the Interactor calls the Presenter and Data Access objects. Its
+source names only the interfaces, so those outward calls create no outward
+source dependencies.
 
-Input Data and Output Data also belong to the Use Case layer. Their fields should use types suitable for the use case, such as IDs, dates, and amounts, rather than Swing events, database rows, or framework response objects. Moving an interface inward does not help if its method signatures still require outer-layer types.
+Input Data and Output Data belong there too. Use IDs, dates, and amounts in
+these types. Swing events, database rows, or framework responses in a boundary
+signature would still introduce an outward dependency.
 
 </details>
 
@@ -116,9 +122,9 @@ The following diagram is the same one we just looked at, but with the flow of co
 ![](images/Clean_Architecture_Typical_Scenario_Diagram_with_flow.png)
 
 <details>
-<summary>Completed walk-through: renew a library loan</summary>
+<summary>Renew a library loan</summary>
 
-Assume this example rejects a renewal when another member has a hold. Other renewal rules would need their own requirements.
+Assume a hold by another member blocks renewal.
 
 | Step | Interaction | Data or responsibility |
 | --- | --- | --- |
@@ -130,11 +136,13 @@ Assume this example rejects a renewal when another member has a hold. Other rene
 | 6 | Interactor calls Output Boundary | Supply either a successful renewal result with its due date or a rejection result |
 | 7 | Presenter updates View Model | Format the date or rejection message, then notify the observing View |
 
-A hold by another member causes rejection without saving a renewed due date. The Presenter formats the rejection; it does not decide eligibility. A View Model contains display state, not the domain model, and the View does not need a live loan entity to render the result.
+The Interactor decides eligibility, the Presenter formats the result, and the
+View reads display state from the View Model without needing a live loan entity.
 
-Test the use case with an in-memory Data Access implementation and an Output Boundary that records the result. A permitted renewal should save the expected loan; a blocked renewal should report rejection and leave the due date unchanged. Neither test needs a window or a real database.
-
-Handle storage failures explicitly so a failed save cannot produce a success result.
+Use in-memory Data Access and a recording Output Boundary to test without a
+window or database. Check that an allowed renewal saves the new due date, a
+blocked renewal reports rejection and leaves the date unchanged, and a failed
+save does not report success.
 
 </details>
 
@@ -164,11 +172,11 @@ Handle storage failures explicitly so a failed save cannot produce a success res
 > Thought Question: Note how we never actually return anything to the Controller. What does this suggest about the return type of the method defined by the Input Boundary?
 
 <details>
-<summary>Completed answer: Input Boundary return type</summary>
+<summary>Why the Input Boundary returns void</summary>
 
-The method returns `void` in this design, for example `void execute(RenewInputData inputData)`. Results go through the Output Boundary to the Presenter instead of returning to the Controller. Both successful and rejected requests need a defined output path.
-
-`void` does not imply asynchronous execution. The Controller's call can remain on the stack while the Interactor calls the Presenter, then return normally when that work finishes. Other architectures can return a result object, but that is not the interaction shown here.
+`void execute(RenewInputData inputData)` sends both success and rejection to the
+Presenter through the Output Boundary. The call can still be synchronous: the
+Interactor can call the Presenter before returning to the Controller.
 
 </details>
 
@@ -187,9 +195,10 @@ What this means is that we can create a different main component, sometimes call
 > Thought Question: Can you imagine how the code for constructing the CA engine might look in practice? We'll see concrete code examples soon, but for now it is a good exercise to think through your mental model of how our above conceptual discussion and the high-level UML class diagram of the CA engine might turn into concrete code.
 
 <details>
-<summary>Completed answer: assemble the objects in main</summary>
+<summary>Wire dependencies in main</summary>
 
-Create each dependency before the object that needs it, then pass it into the constructor. This wiring example assumes the classes and constructors already exist; it is not a standalone program.
+Assuming these classes exist, construct each dependency before passing it to
+its caller:
 
 ```java
 RenewViewModel viewModel = new RenewViewModel();
@@ -201,18 +210,20 @@ RenewView view = new RenewView(controller, viewModel);
 view.show();
 ```
 
-The Interactor constructor accepts two Use Case interfaces, `RenewDataAccess` and `RenewOutputBoundary`. The Controller constructor accepts `RenewInputBoundary`. Neither class constructs its concrete dependencies.
+The Interactor and Controller take use-case interfaces in their constructors.
+Main is the composition root: it picks concrete implementations and can swap
+file storage for a database with the same contract without touching renewal
+rules. Keep main outside the inner layers.
 
-The View must observe the same View Model that the Presenter updates. Separate View Models would disconnect them. In Swing, create and show the UI on the event dispatch thread.
-
-Main is the composition root, where the program chooses and connects concrete implementations. It knows about outer details, so keep it outside the inner layers. If a database repository satisfies the same data-access contract as the file repository, switching between them requires changes to the wiring but not the renewal rules.
+The Presenter and View share a View Model. In Swing, create and show the UI on
+the event dispatch thread.
 
 </details>
 
 > Thought Question: Can you identify specific aspects of the design of the Clean Architecture that remind you of each SOLID principle?
 
 <details>
-<summary>Completed answer: SOLID in Clean Architecture</summary>
+<summary>SOLID in Clean Architecture</summary>
 
 | Principle | Application | What still needs checking |
 | --- | --- | --- |
@@ -221,7 +232,5 @@ Main is the composition root, where the program chooses and connects concrete im
 | LSP | A test repository and a production repository must satisfy the same promised behaviour | Matching method signatures is insufficient; missing-item behaviour and save semantics must also match the contract |
 | ISP | Each use case requests the data-access and output operations it actually needs | One large interface for every use case can create unrelated dependencies |
 | DIP | Interactors depend on output and data-access interfaces in the Use Case layer, which outer classes implement | Passing concrete dependencies through constructors is injection, but does not by itself establish dependency inversion |
-
-The architecture supports SOLID; package structure and interface declarations alone do not guarantee it.
 
 </details>

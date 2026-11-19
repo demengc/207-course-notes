@@ -387,22 +387,22 @@ it in IntelliJ with the **PlantUML Integration** (plantuml4idea) plugin
 installed and a live preview renders beside the file as you type.
 
 <details>
-<summary>Completed answer: library analysis and UML</summary>
+<summary>Library classes and responsibilities</summary>
 
 | Noun or noun phrase | Treatment | Reason |
 | --- | --- | --- |
-| Library | Domain context | A separate `Library` class would only group the other objects in this design. |
-| Member | `Member` | Stores the member number and late-fee balance; borrows items and places holds. |
-| Item | Abstract `Item` | Holds the title and unique catalogue number shared by all items. |
-| Book, DVD | `BorrowableItem` instances | Their only specified borrowing difference is the loan period: 21 or 7 days. Separate subclasses would add no behaviour. |
-| Three weeks, one week, loan period | `loanPeriodDays` attribute | A duration is a value, not a separate entity here. |
-| Reference-only item | `ReferenceItem` | Shares item information but exposes no borrowing or hold operations. A reference-only book belongs here, not among borrowable books. |
-| Title, catalogue number, member number | Attributes | These values identify or describe an item or member. |
+| Library | Domain context | A `Library` class would only group existing objects. |
+| Member | `Member` | Stores the member number and fee balance; requests loans and holds. |
+| Item | Abstract `Item` | Holds the shared title and unique catalogue number. |
+| Borrowable book, DVD | `BorrowableItem` instances | They differ only in loan period: 21 or 7 days. |
+| Three weeks, one week, loan period | `loanPeriodDays` attribute | A duration is a value. |
+| Reference-only item | `ReferenceItem` | Shares item fields; exposes no borrowing or hold operations. |
+| Title, catalogue number, member number | Attributes | Identify or describe an item or member. |
 | Loan | `Loan` | Records the borrower, borrowing date, and due date. |
-| Hold | `Hold` | Remembers which member requested which item. |
+| Hold | `Hold` | Records the requester and item. |
 | Librarian | `Librarian` | Adds items and waives members' late fees. |
-| Catalogue | `Catalogue` | Stores items by catalogue number and supports lookup. |
-| Late fee | `Member.lateFeeBalance` | Only waiving the balance is specified. Individual fee records would be useful if fee history were required. |
+| Catalogue | `Catalogue` | Stores and finds items by catalogue number. |
+| Late fee | `Member.lateFeeBalance` | Waiving a fee needs only the balance. Fee history would need individual records. |
 
 | Verb phrase | Responsible class | Collaboration or rule |
 | --- | --- | --- |
@@ -414,13 +414,18 @@ installed and a live preview renders beside the file as you type.
 | Add a new item to the catalogue | `Librarian.addItem` | Delegates to `Catalogue.addItem`, which rejects a duplicate catalogue number. |
 | Waive a member's late fee | `Librarian.waiveLateFee` | Delegates to `Member.waiveLateFee`, which sets that member's balance to zero. |
 
-`Item` is an abstract superclass because its subclasses share item state. `BorrowableItem` and `ReferenceItem` extend it. `Borrowable` is an interface exposing the operations that member borrowing code needs; only `BorrowableItem` implements it. Reference-only items therefore do not need a `borrow` method that always throws.
+`BorrowableItem` and `ReferenceItem` extend `Item` to share its fields. Only
+`BorrowableItem` implements `Borrowable`, so `ReferenceItem` needs no `borrow`
+method that always throws. Set the loan period when creating a book or DVD;
+separate subclasses would make sense if their behaviour diverged.
 
-Books and DVDs use a loan-period field rather than separate subclasses. This keeps the model small, but item creation must supply the correct period. Subclasses would become useful if books and DVDs gained different behaviour beyond their loan duration.
+`Member` and `Librarian` have no specified shared fields or behaviour to justify
+a `Person` superclass. The specification leaves open whether a librarian is also
+a member.
 
-There is no `Person` superclass for `Member` and `Librarian`: the specification supplies no shared fields or behaviour. Being people is not enough to justify inheritance, and it does not establish whether a librarian is also a member.
-
-The [completed UML diagram](plantuml/exercises/library-uml-starter.puml) includes the lookup, loan-status, and hold-storage responsibilities needed by Question 2. Its named associations represent object references or collections, such as `currentLoan` and `holds`.
+The [completed UML diagram](plantuml/exercises/library-uml-starter.puml) shows
+the lookup, loan-status, and hold-storage operations used in Question 2. Named
+associations such as `currentLoan` and `holds` show references or collections.
 
 </details>
 
@@ -459,28 +464,34 @@ them.
 </details>
 
 <details>
-<summary>Completed answer: hold walk-through</summary>
+<summary>Placing a hold</summary>
 
-Assume member M2 has selected catalogue item C17, a book currently borrowed by M1.
-
-The initial noun-verb pass identifies `Member.placeHold` and a `Hold`, but those alone do not explain how to find the item, check its loan status, or retain the hold. Add `Catalogue.findItem`, `BorrowableItem.currentLoan` and `isOnLoan`, and the item's `holds` collection. Restart the scenario against that design:
+M2 selects item C17, a book on loan to M1. The initial design has
+`Member.placeHold` and `Hold`. Add `Catalogue.findItem` for lookup,
+`BorrowableItem.currentLoan` and `isOnLoan` for the loan check, and `holds`
+to retain the request. Trace the scenario again:
 
 | Step | Responsible class | Collaboration and result |
 | --- | --- | --- |
-| 1. Find C17. | `Catalogue` | `findItem("C17")` returns the stored item. It is a `BorrowableItem`, so it supports `Borrowable`. |
+| 1. Find C17. | `Catalogue` | `findItem("C17")` returns a `BorrowableItem`. |
 | 2. Request a hold for M2. | `Member` | M2's `placeHold(item)` delegates to `item.placeHold(this)` through `Borrowable`. |
-| 3. Check the item is on loan. | `BorrowableItem` | `placeHold` uses `isOnLoan`, which checks whether `currentLoan` exists. The loan to M1 satisfies this condition. |
-| 4. Record the request. | `BorrowableItem` | Creates a `Hold` referring to M2 and this item, adds it to `holds`, and returns it. |
-| 5. Find the hold later. | `Catalogue`, `BorrowableItem` | The catalogue retains the item, and the item retains the hold. The request survives after `placeHold` returns. |
+| 3. Check the loan. | `BorrowableItem` | `isOnLoan` finds M1's loan in `currentLoan`. |
+| 4. Record the request. | `BorrowableItem` | Creates a `Hold` for M2 and C17, adds it to `holds`, and returns it. |
+| 5. Find the hold later. | `Catalogue`, `BorrowableItem` | The catalogue retains the item, and the item retains the hold. |
 
-This pass needs no further changes. If C17 is no longer on loan when step 3 runs, the operation rejects the request and stores no hold. Duplicate holds, hold ordering, notifications, and return processing need further requirements; this answer does not assign policies to them.
+If C17 is no longer on loan at step 3, the item rejects the request without
+storing a hold. Duplicate holds, hold ordering, notifications, and returns need
+separate requirements.
 
 | Who knows whether an item is on loan? | Benefit | Cost |
 | --- | --- | --- |
 | `BorrowableItem`, through an optional `currentLoan` | Status checks and borrowing rules are local to the item. | Finding all loans for a member requires scanning items or maintaining a separate index. |
 | A separate loan register, mapping items to active loans | Centralizes loan searches and makes reporting across items easier. | Borrowing and hold operations must consult the register, adding another collaborator. |
 
-This design chooses `BorrowableItem`. `isOnLoan()` derives its answer from `currentLoan`; a separate boolean could disagree with the loan reference. A `Loan` records the borrower and dates, but one loan alone cannot tell us whether an item has some other active loan. Whichever owner is chosen must keep loan-status changes and hold placement consistent if requests can run concurrently.
+Use `BorrowableItem` and derive `isOnLoan()` from `currentLoan`; a separate flag
+could get out of sync. An individual `Loan` cannot tell whether another loan is
+active for the item. Either owner must keep loan updates and hold placement
+consistent under concurrent requests.
 
 </details>
 
@@ -518,7 +529,7 @@ Review your draft with these questions:
 As a scope check, compare the story above with "As a student, I want to manage all of my room bookings," which is likely an epic, and "Build the room-booking form," which is an implementation task. The exercise story sits between them: it expresses one useful, implementable user goal.
 
 <details>
-<summary>Completed answer: reserve a study room</summary>
+<summary>Reserve a study room</summary>
 
 | Field | Use case |
 | --- | --- |
@@ -536,9 +547,11 @@ Main success scenario:
 
 Extensions:
 
-- **2a. The room became unavailable after selection.** The system explains that the selected interval is unavailable. It creates no reservation for this request and leaves existing bookings unchanged. The use case ends; the student may choose another selection and submit a new request.
-- **2b. The system cannot record the reservation.** The system reports that the reservation was not made and that the student may retry. It creates no reservation or partial booking, and the use case ends.
+- 2a. Room no longer available: The system reports the conflict and leaves bookings unchanged. The student can submit a new selection.
+- 2b. Save fails: The system reports that no reservation was made and invites a retry. It leaves no partial booking.
 
-Availability is not a precondition: it can change after selection. Step 2 must prevent conflicting reservations even when two students submit requests together; an earlier availability display does not guarantee success. The use case specifies that outcome without choosing a database or locking mechanism.
+Both extensions end the current request. Availability can change after room
+selection, so step 2 must prevent conflicts even when students submit requests
+at the same time. The use case leaves the database and locking mechanism open.
 
 </details>

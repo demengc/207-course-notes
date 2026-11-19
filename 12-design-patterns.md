@@ -65,6 +65,20 @@ To connect this back to our analogy: If someone has already proven a theorem thr
 
 > Exercise: As you read about each design pattern, think about how you could "derive" each pattern using one or more of our principles.
 
+<details>
+<summary>Design principles behind the six patterns</summary>
+
+| Pattern | Principle | Design step |
+| --- | --- | --- |
+| Factory | SRP, DIP | Move construction out of the client. An abstract factory lets the client accept new factories unchanged; a simple factory needs a new case for each shape type. |
+| Builder | SRP, high cohesion | Keep assembly steps and temporary state in the builder. The finished object holds the result. |
+| Strategy | DIP, OCP | Give algorithms a shared interface. Add an algorithm by implementing the interface and updating the wiring, without editing the context. |
+| Observer | DIP, low coupling | Notify subscribers through a shared interface so the subject need not know how they respond. |
+| Façade | Low coupling | Let clients issue a bill through one method that delegates calculation, printing, and logging. |
+| Adapter | OCP, low coupling | Translate the client's existing call, such as `sellTicket()`, to `Ticket.sell()` without changing the client or `Ticket`. |
+
+</details>
+
 ### 12.1.3. A Brief History
 
 <img src="images/gof-design-patterns-cover.jpg" height=200px align="right" alt="cover of the design patterns book"/>
@@ -572,3 +586,24 @@ Implement a design pattern yourself in this exercise under the
   (using [DrivingDirections.java](exercises/ex16-strategy/src/main/java/DrivingDirections.java)
   as a model). Then run
   [NavigatorTest.java](exercises/ex16-strategy/src/test/java/NavigatorTest.java).
+
+<details>
+<summary>Switch strategies at runtime</summary>
+
+`Navigator` stores the caller's `DirectionGenerator` and returns its result
+from `getDirections(destination)`. Each strategy supplies its own wording.
+
+```java
+Navigator navigator = new Navigator(new DrivingDirections());
+System.out.println(navigator.getDirections("Toronto"));
+navigator.setDirectionGenerator(new TransitDirections());
+System.out.println(navigator.getDirections("Toronto"));
+```
+
+Output: `Drive to Toronto`, then `Take transit to Toronto`.
+
+```bash
+mvn -P exercises -pl exercises/ex16-strategy test
+```
+
+</details>

@@ -200,18 +200,18 @@ For example, which principles align with how Java requires the parent's construc
 Each time you encounter new code or a UML class diagram, you should begin to assess its design through this new perspective based on the SOLID principles.
 
 <details>
-<summary>Completed answer: Java features and SOLID</summary>
+<summary>How Java supports SOLID</summary>
 
-Java provides tools that support SOLID designs, but the compiler does not enforce the principles themselves.
+Java supports these designs; the compiler does not enforce SOLID.
 
-| Java feature | Related principles | Reasoning and limits |
+| Java feature | Principles | What it buys |
 | --- | --- | --- |
-| Calling the superclass constructor | LSP | The superclass can initialize its own state and enforce its invariants before subclass construction finishes. This supports valid subtype objects, but does not stop an override from breaking a behavioural contract. A `Square` can still violate independent width/height setters after construction. |
-| Generics, such as `List<T>` or `<T extends Comparable<T>>` | OCP, DIP | A generic algorithm can work with additional types without changing its body. A bound such as `Comparable<T>` lets it depend on an abstraction rather than concrete element classes. Generics alone do not guarantee either principle: a bound can also name a concrete class. |
-| `private` fields and methods | SRP, OCP | Hiding implementation details prevents clients from coupling directly to them and permits internal changes behind a stable API. It does not give the class a single reason to change; an oversized class can still have only private fields. |
-| Interfaces as reference and parameter types | DIP, OCP | A client can depend on a contract and accept new implementations without type-specific edits. `Manager` holding an `IWorker` is the example in Exercise 15. Wiring code still chooses the concrete implementation. |
-| Small, client-specific interfaces | ISP | A client needing only work behaviour can use `IWorker.work()` without depending on unrelated operations. Merely using an interface is insufficient if that interface bundles irrelevant methods. |
-| Method overriding and interface implementation | LSP | Java checks compatible method signatures, but programmers must preserve the promised behaviour. An implementation must not reject inputs the contract permits or fail to provide outcomes the contract promises. |
+| Superclass constructor | LSP | Establishes superclass invariants. Later overrides can still break the contract, as when a `Square` changes both dimensions through a width setter. |
+| Generics (`List<T>`, `<T extends Comparable<T>>`) | OCP, DIP | One algorithm works with new types. An interface bound avoids depending on concrete element types; a concrete bound does not. |
+| `private` fields and methods | SRP, OCP | Clients rely on the API while internals can change. Private fields alone do not give a class one reason to change. |
+| Interface reference and parameter types | DIP, OCP | `Manager` accepts new `IWorker` implementations unchanged. Wiring code chooses the implementation. |
+| Small, client-specific interfaces | ISP | A client can call `IWorker.work()` without depending on unrelated operations. |
+| Overriding and implementing methods | LSP | The compiler checks signatures. The implementation must accept the inputs and deliver the outcomes the contract promises. |
 
 </details>
 
@@ -237,13 +237,13 @@ Practice the Dependency Inversion Principle with this exercise under the
   depending on an abstraction.
 
 <details>
-<summary>Completed answer: dependency inversion</summary>
+<summary>Manager depends on IWorker</summary>
 
-In [Manager.java](exercises/ex15-dependency-inversion/src/main/java/Manager.java), the field is an `IWorker`, and `setWorker` stores the supplied object. `manage()` calls that object's `work()` method.
-
-The source dependencies are `Manager → IWorker`, `Worker → IWorker`, and `SuperWorker → IWorker`. `Manager` names neither concrete worker. This applies DIP, and supports OCP: a new `IWorker` implementation requires no change to `Manager`. Supplying the object through the setter is dependency injection; depending on the interface is the dependency-inversion choice.
-
-No second field, overloaded setter, cast, or worker-type condition is needed. The existing tests cover a regular worker, a super worker, switching workers, and a lambda implementation defined outside `Manager`.
+In [Manager.java](exercises/ex15-dependency-inversion/src/main/java/Manager.java),
+`setWorker` stores an `IWorker`; `manage()` calls its `work()` method. The setter
+injects the dependency. Depending on `IWorker` rather than `Worker` or
+`SuperWorker` applies DIP and lets `Manager` accept new implementations unchanged
+(OCP). The tests cover both workers, switching workers, and a lambda.
 
 </details>
 
@@ -262,35 +262,15 @@ public class Report {
 Which SOLID principle is most clearly violated here, and how would you fix it?
 
 <details>
-<summary>Completed answer: Report responsibilities</summary>
+<summary>Separate report generation from delivery</summary>
 
-`Report` most clearly violates SRP because report content, file storage, and email delivery can change for separate reasons.
+`Report` violates SRP (§9.2.1): report formatting, file storage, and email
+can change independently. Keep text generation in `Report` and pass the text to
+`ReportFileWriter` or `ReportEmailer` for delivery.
 
-| Class | Responsibility | Reason to change |
-| --- | --- | --- |
-| `Report` | Generate report text | Changes to report content or formatting requirements |
-| `ReportFileWriter` | Write supplied text to a file | Changes to file-storage requirements |
-| `ReportEmailer` | Send supplied text by email | Changes to email-delivery requirements |
-
-The calling code generates the text and passes it to the required output object. The writer and emailer do not generate their own versions of the report.
-
-If the caller needs interchangeable output destinations, define a `ReportOutput` interface and have both output classes implement it. A caller depending on that interface applies DIP and can accept new output implementations without changing its delivery logic, supporting OCP. Splitting the three responsibilities addresses SRP even without that extra interface.
-
-</details>
-
-<details>
-<summary>Show answer</summary>
-
-The **Single Responsibility Principle** (§9.2.1). `Report` has three unrelated
-reasons to change: the report's content/format, how files are written, and how
-email is sent. A change to any one of them forces you to edit this one class.
-
-A fix is to split the responsibilities into separate classes — for example a
-`Report` that only knows how to produce the text, plus a `ReportFileWriter` and a
-`ReportEmailer` that each handle one form of output. If you then define an
-abstraction — say a `ReportOutput` interface that both writers implement — and
-have the calling code depend on that interface rather than on the two concrete
-classes, you are applying the DIP as well.
+If the destinations need to be interchangeable, both can implement
+`ReportOutput`. A caller that depends on this interface applies DIP and can
+accept new destinations without changing its delivery logic (OCP).
 
 </details>
 

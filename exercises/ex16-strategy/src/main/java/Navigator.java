@@ -1,15 +1,5 @@
 /**
- * Exercise (Chapter 12: Design Patterns) — the Strategy pattern.
- *
- * {@code Navigator} is the <em>Context</em> from the chapter's example. It
- * holds a {@link DirectionGenerator} strategy and delegates to it, so the same
- * Navigator can produce driving or transit directions just by swapping the
- * strategy — without changing this class.
- *
- * Complete the constructor, the setter, and {@code getDirections} so they store
- * and use the strategy. Edit only this file (and {@link TransitDirections}).
- *
- * Relevant reading: 12.3.1. Strategy.
+ * Strategy context that delegates to a replaceable {@link DirectionGenerator}.
  */
 public class Navigator {
 
@@ -21,7 +11,7 @@ public class Navigator {
    * @param generator the direction-generating strategy to start with
    */
   public Navigator(DirectionGenerator generator) {
-    // TODO: store the strategy in the field.
+    this.generator = generator;
   }
 
   /**
@@ -30,7 +20,7 @@ public class Navigator {
    * @param generator the new direction-generating strategy
    */
   public void setDirectionGenerator(DirectionGenerator generator) {
-    // TODO: replace the current strategy.
+    this.generator = generator;
   }
 
   /**
@@ -41,7 +31,6 @@ public class Navigator {
    * @return the directions produced by the current strategy
    */
   public String getDirections(String destination) {
-    // TODO: ask the current strategy for the directions and return them.
-    return "";
+    return generator.getDirections(destination);
   }
 }

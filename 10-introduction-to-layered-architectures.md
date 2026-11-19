@@ -41,11 +41,15 @@ Now that we’ve seen how layered architectures can naturally separate policies 
 > Thought Question: What might a “policy” look like in your code? Is it a method, a class, a rule enforced by a conditional, or something else? 
 
 <details>
-<summary>Completed answer: policies in code</summary>
+<summary>Where policies belong</summary>
 
-A policy is a rule that can take several forms in Java. A conditional can reject a renewal when another member has a hold, and a method can enforce that rule on every renewal attempt. A class can keep the state and operations needed to preserve related invariants.
+A renewal method can enforce a policy with a conditional that rejects renewals
+when another member has a hold. A class can own the state and operations that
+keep related invariants true.
 
-Where a rule belongs depends on its responsibility. An entity can enforce an account's overdraft limit, while a use case coordinates loading the account, requesting a withdrawal, and saving the result. Reading the amount from a Swing text field belongs in the input layer. Putting these responsibilities in one button listener would couple the banking rules to Swing.
+In a withdrawal, the account enforces its overdraft limit, the use case loads
+and saves the account, and the Swing listener reads the amount. Enforcing the
+limit in the listener would tie the rule to Swing.
 
 </details>
 
@@ -62,9 +66,11 @@ To support new user interactions, we write new event listeners and define how th
 > Review Question: Is an event listener a low-level or high-level policy?
 
 <details>
-<summary>Completed answer: event listeners</summary>
+<summary>Event listeners handle low-level input</summary>
 
-An event listener is low level because it handles input from a specific UI mechanism. A Swing listener reads the relevant fields and delegates to a controller. Business rules belong behind that controller so the same operation can run from a command-line interface or a test without creating Swing components.
+A Swing listener reads the fields and delegates to a controller. Keeping the
+business rules behind the controller lets a command-line interface or test run
+the same operation without Swing.
 
 </details>
 
@@ -87,11 +93,11 @@ Models are an important concept, because the entities represent how to think abo
 > Review Question: What level of policies do entities represent?
 
 <details>
-<summary>Completed answer: entities and coupling</summary>
+<summary>Entities enforce high-level policies</summary>
 
-Entities represent high-level domain policies. Their invariants should hold regardless of the screen, database, or application workflow that uses them. A `Book` entity should not import `JButton` or a database connection class.
-
-Low coupling means a change to one component requires few changes elsewhere. High cohesion means a component's responsibilities belong together. Naming a package `model` does not provide either benefit if its classes still mix domain rules, SQL, and UI updates. The code must respect the layers' dependency boundaries.
+Entity invariants hold across screens, databases, and workflows. A `Book`
+belongs in the domain layer; importing `JButton` or a database connection class
+would couple it to another layer even if its package is named `model`.
 
 </details>
 
@@ -169,11 +175,12 @@ We'll explore Clean Architecture in more detail in the next chapter, as it will 
 > You'll find that the idea of layers shows up in many system design contexts. What is it about organizing systems in this way that makes it such a common design?
 
 <details>
-<summary>Completed answer: why layers help</summary>
+<summary>What layers buy</summary>
 
-A layer's contract lets callers use it without understanding its implementation. As long as the contract holds, implementations can change independently and tests can substitute another implementation at the boundary.
-
-Each extra layer adds interfaces, data conversions, and wiring, so weigh that cost against the separation it provides. Separate packages alone do not remove coupling: a domain class that imports a UI class still depends on the UI. Operating-system layers illustrate abstraction; Clean Architecture also requires source dependencies to point toward policy.
+A stable contract lets a layer's implementation change without affecting its
+callers. Tests can substitute an implementation at the boundary. Weigh that
+benefit against the extra interfaces, data conversions, and wiring. Clean
+Architecture also requires source dependencies to point toward policy.
 
 | Pattern in this chapter | Handles user input | Updates the display | Separation to remember |
 | --- | --- | --- | --- |
@@ -181,6 +188,7 @@ Each extra layer adds interfaces, data conversions, and wiring, so weigh that co
 | MVP | View listener delegates to Presenter | Presenter tells View what to display | Presenter mediates between View and Model |
 | Clean Architecture | View delegates to Controller, which calls an Input Boundary | Interactor calls an Output Boundary; Presenter updates View Model | Use cases know neither concrete UI nor storage classes |
 
-MVC and MVP have variants. A notification from Model to View need not mean a dependency on a concrete View class; an observer interface can separate them. Runtime information flow alone does not establish the direction of source dependencies.
+MVC and MVP have variants. For example, a Model can notify a View through an
+observer interface without knowing the concrete View class.
 
 </details>

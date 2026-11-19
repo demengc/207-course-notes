@@ -229,6 +229,16 @@ You can see another example of this in `Monster.java`.
 If you change the type of the parameter from `Object` to `Monster`, what happens?
 You should see some helpful hints from IntelliJ about what problem this will cause.
 
+<details>
+<summary>Why equals takes Object</summary>
+
+`equals(Monster)` is an overload, so `@Override` causes a compile error. Without
+that annotation, `a.equals(b)` calls the overload when both variables are declared
+`Monster`. Declare `b` as `Object` and the same call uses the inherited
+`Object.equals(Object)`, which checks identity.
+
+</details>
+
 ### 2.6.3. hashCode
 Whenever we override the equals method, we will often want to override another
 inherited method called "hashCode". The hash code of an object is an integer
