@@ -175,6 +175,22 @@ Practise these refactorings in the `ex17-refactoring` module under the
   behaviour. Re-run the tests after each step, and let IntelliJ do the work with
   **Extract Method** (Ctrl+Alt+M / ⌥⌘M).
 
+<details>
+<summary>Exercise 17 solutions</summary>
+
+- `Temperature`: Both factories store Celsius. `fromFahrenheit` converts
+  before delegating to `fromCelsius`, and the private constructor requires callers
+  to name the input unit.
+- `OrderSummary`: Subtotal and premium count use separate loops with local
+  accumulators. Report and item-line formatting use separate methods. Named
+  constants capture the tax rate, discount rate, and price thresholds.
+
+```bash
+mvn -P exercises -pl exercises/ex17-refactoring test
+```
+
+</details>
+
 * * *
 
 ## 13.10. Additional Reading:
