@@ -25,8 +25,10 @@ Software designers often assume that their user is:
 - like themselves, or
 - a member of the majority.
 
-And this leads them to design products that **exclude** some people from being
-able to use those products.
+Both assumptions can leave users out. For the study-room example in
+[§8.6](08-program-specification.md#86-exercises), consider a student who uses a
+screen reader: "As a student who uses a screen reader, I want to check which
+rooms and time slots are available so I can book a room on my own."
 
 ## E1.2. Disability
 
@@ -85,9 +87,10 @@ condition.
 
 Is the limitation caused by the impairment, or by the human world?
 
-For some impairments, and some limitations, the medical model may seem more
-appropriate. For some impairments, and some limitations, the social model may
-seem more appropriate.
+The medical model focuses on how attention difficulties affect concentration.
+The social model asks how the setting affects the same student. For example,
+a quieter room or written instructions may make the schoolwork easier to do
+without changing the impairment.
 
 > "Well, I was born with a rare visual condition called achromatopsia, which is
 > total color blindness, so I've never seen color, and I don't know what color
@@ -134,21 +137,14 @@ model to think about **interventions** that address disability.
 
 ## E1.5. Material and relational harms
 
-What sort of harms can someone suffer if they are excluded from using software?
-It partially depends on what the software does! Consider:
+Exclusion can cause different **material harms** depending on the app:
 
-- a rideshare app,
-- a messaging app,
-- a passport control app, and
-- a dating app.
-
-These are **material harms**: loss of happiness, health, freedom,
-opportunities, etc. For example, someone excluded from a rideshare app may lose
-the freedom to get around on their own; someone excluded from a messaging app
-may lose opportunities to stay in touch with friends and family.
-
-But now we will think about a harm caused by exclusion that is much harder to
-quantify.
+| App | What a user might lose |
+| --- | --- |
+| Rideshare | The ability to get around without asking for a ride |
+| Messaging | A way to stay in touch with friends and family |
+| Passport control | Time waiting for manual processing, or the trip itself if there is no alternative |
+| Dating | Opportunities to meet potential partners |
 
 Consider two apps:
 

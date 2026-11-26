@@ -30,14 +30,11 @@ We say that a string _matches_ a regex if the string fits the pattern that the r
 
 As an example, consider the regular expression `.*o`.
 In this regex:
-- the `.` matches any character,
+- the `.` matches any character except a line terminator by default in Java,
 - the `*` indicates that the pattern requires zero or more occurrences of the preceding element (in this case, the `.`), and
 - the `o` matches the character `o`.
 
-Together, the full regex matches any string that ends with the letter `o`, such as "hello", "ceo", and "o".
-
-As this example demonstrates, a short regex can describe a pattern that infinitely many different strings match!
-Let's explore the syntax of regex so that we can understand and define our own patterns.
+The full regex matches a single-line string ending in `o`, such as `hello`, `ceo`, or `o`.
 
 ## 14.2. Some Useful Regex Symbols with Examples
 
@@ -45,11 +42,11 @@ We use `[` and `]` to define a choice of symbols. So `[abc]` will match "a", "b"
 
 By inserting a hyphen (`-`) we can specify a range. So `[a-z]` will match any lower case letter such as "a", "h", or "x". 
 
-Other examples include `[0-9]` or `\d` which both match any digit such as "0", "2", or "7", and `[a-zA-Z0-9]` which will match strings like "b", "R", and "2".
+In Java's default regex mode, `[0-9]` and `\d` both match one ASCII digit.
+`[a-zA-Z0-9]` matches one ASCII letter or digit.
 
-Postal codes in Toronto all start with `M` and then alternate between numbers and letters, with a space in the middle.
-For example, "M0A 1B2" is a Toronto postal code.
-To describe all Toronto postal codes, we can use the regular expression `M[0-9][A-Z] [0-9][A-Z][0-9]`.
+`M[0-9][A-Z] [0-9][A-Z][0-9]` checks the basic format of a Toronto postal code,
+such as `M0A 1B2`. It can't tell you whether the code is assigned to an address.
 
 ## 14.3. Repeating Patterns with Quantifiers
 
@@ -76,11 +73,11 @@ specify repetitions and create more interesting patterns.
 You can make your own character classes by using square brackets like
 `[q-z]` and `[AEIOU]`, or you can use a predefined character class.
 
-The following table lists some common character classes:
+These character classes use Java's default regex mode:
 
 | character class | description                      |
 |-----------------|----------------------------------|
-| `.`             | any character (except a newline) |
+| `.`             | any character except a line terminator |
 | `\d`            | a digit `[0-9]`                  |
 | `\D`            | a non-digit `[^0-9]`             |
 | `\s`            | a whitespace character           |
@@ -100,12 +97,13 @@ The following regex uses a group to accomplish this:
 
 `([0-9])\1\1-[0-9]{3}-[0-9]{4}`
 
-`\1` indicates that the characters from group `1` — in this case the character matching `[0-9]` — must be repeated.
-The second `\1` indicates that it needs to be repeated once more, so that same character must appear three times in a row!
+`\1` is a **backreference**: it matches the exact text captured by group 1.
+Here the group captures one digit, and the two backreferences require that same
+digit twice more.
 
 ### 14.3.3. Multiple Groups
 
-Each group is assigned a number based on the order in which its opening parenthesis appears from left to right.
+Capturing groups are numbered by the order of their opening parentheses, starting at 1.
 For this reason, the only group in the above example was group `1`, which we wrote as `\1` when we wanted to refer to it later in the regex.
 
 For example, `(([de])f)\2\1` will repeat both groups. The strings that match are:
@@ -137,62 +135,43 @@ This is called an **anchor**.
 In the leftmost set of brackets, we are given all lowercase letters to choose from,
 so the first character must be one of these 26 possible letters.
 
-Any remaining characters must come from the second set of square brackets: `[a-zA-Z0-9]*`.
+`[a-zA-Z0-9]*` allows zero or more ASCII letters or digits after the first
+character. The `$` anchor marks the end (see §14.4.1).
 
-> Recall that the `*` quantifier means zero or more occurrences of the preceding element.
+This checks a naming convention. `next_value` and `$value` are legal Java
+identifiers that fail the pattern. `class` fits the pattern but is a reserved word.
 
-Lastly, the `$` signifies the end of the string. This is another anchor.
+`x`, `numStudents`, and `obj1` match. `Alphabet` and `2ab` fail.
 
-Putting this all together, we have that a matching string must
-consist of a first character from `a-z`, followed by zero
-or more lowercase letters, uppercase letters, or digits.
-Reading this, we recognize that this is precisely the Java naming convention for variable names!
+> Which strings match: `z3333`, `aBcB041`, or `78a`?
 
-> Java itself also allows other characters, such as `_` and `$`, in variable names; the convention is stricter than the language.
+<details>
+<summary>Check your answer</summary>
 
-With our regex in hand, we can try it out on a few examples:
+`z3333` and `aBcB041` match. `78a` starts with a digit, so it fails.
 
-Here are some examples of strings which match:
-
-"x",  "numStudents",  "obj1"
-
-Here are some examples of strings which do not match:
-
-"Alphabet",  "2ab",  "next_value"
-
-> Do any of these strings match our regex?
-> "z3333", "aBcB041", "78a"
-
+</details>
 
 ### 14.4.1. What if There Are No Anchors?
-In the previous example, we introduced anchors:
 
-- `^` matches the start of a string.
-- `$` matches the end of a string.
+`matches()` requires the whole input even without anchors. `find()` looks for a
+matching substring. For the pattern `[abc]C[a-e][24680]*[A-Z]`:
 
-So far, we have said that a string matches a regex when the _whole_ string fits the pattern.
-However, most practical regex implementations behave differently.
-They often check whether any _substring_ of the input matches the pattern, unless anchors are used.
+| Input | `matches()` | `find()` |
+| --- | --- | --- |
+| `cCaA` | `true` | `true` |
+| `ABCcCcAa1A23` | `false` | `true` (finds `cCcA`) |
+| `cCa1A` | `false` | `false` (`1` is not in `[24680]`) |
 
-> In practice, when using regex in a programming language like Java, one must carefully read the
-> documentation, as sometimes anchors are implicitly included (i.e., a method will automatically be looking for full matches).
-
-Here is a regular expression which has no anchors.
-
-```[abc]C[a-e][24680]*[A-Z]```
-
-Because there are no anchors, a string will match this regex if _any_ substring contained within it matches the regex.
-
-For example, the string "cCaA" matches (the whole string fits the pattern), and so does "ABCcCcAa1A23",
-since it contains the substring "cCcA", which fits the pattern.
-
-A string like "cCa1A" does not match though, since the "1" doesn't fit the pattern.
+By default, `^` matches the start of the input. `$` matches the end or the
+position before a final line terminator. In `MULTILINE` mode they also match at
+line boundaries. `\z` matches only the absolute end.
 
 ## 14.5. Special symbols
 
 Certain characters have special meaning in regex to allow us to develop more rich expressions.
 
-For example, as we saw already, the period (`.`) matches any character.
+For example, `.` matches any character except a line terminator by default.
 
 From working with files and strings, you might recall that the
 backslash (`\`) escape character can be combined with certain other characters to represent
@@ -207,17 +186,13 @@ For example, `[^aeiouAEIOU]` matches anything that _isn’t_ a vowel.
 
 ### 14.5.1. Escaping the Meaning of a Symbol
 
-What if we wanted to include a period in our matching string?
-To match strings like "1.2" or "3.8" we need some way to force a period to be included.
-Since `.` matches any character, not just periods, we will have to *escape* the period by writing a backslash in front of it like this: `\.`.
-By escaping the period, we indicate that its special meaning should be ignored, and `\.` matches precisely a literal "." character.
-
-So the regular expression that matches all single digit numbers followed by a single digit after the decimal looks like this: `[0-9]\.[0-9]`
+Escape the period as `\.` to match a literal dot. For example,
+`[0-9]\.[0-9]` matches `1.2` and `3.8`.
 
 ### 14.5.2. Logical operators
 
-The `|` symbol means "or" and `&&` means the intersection of the range before the ampersands and
-the range that appears after.
+The `|` symbol separates alternatives: `cat|dog` matches `cat` or `dog`.
+Inside a Java character class, `&&` intersects sets of characters.
 
 For example `[a-t&&r-z]` would match only the strings "r", "s", and "t".
 
@@ -225,8 +200,14 @@ For example `[a-t&&r-z]` would match only the strings "r", "s", and "t".
 
 ## 14.6. Regex in Java
 
-In Java, you write regular expressions as strings, so you need to escape all of its backslashes. Instead of writing `\d` to match a single digit, you will have to write `"\\d"` in Java.
-This also means that escaping a backslash, which normally would look like this `\\`, in Java will look like `"\\\\"`, because each backslash has to be escaped separately.
+Java parses the string literal first. Double each backslash so the regex engine
+receives the intended pattern:
+
+| Match | Regex | Java string literal |
+| --- | --- | --- |
+| One digit | `\d` | `"\\d"` |
+| A literal period | `\.` | `"\\."` |
+| A literal backslash | `\\` | `"\\\\"` |
 
 The `String` class contains methods such as `split`, `matches`, `replaceAll`, and `replaceFirst` which all make use of regex if
 you read their documentation.
@@ -250,10 +231,11 @@ The documentation highlights that `matches` provides a more convenient equivalen
 boolean b = Pattern.matches("a*b", "aaaaab");
 ```
 
-The [`Matcher`](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Matcher.html) class facilitates
-various operations related to actually checking for matches and then querying details of the result. For example,
-one can use the `group(int group)` method to access a group from the previous match operation. See the documentation
-for additional details.
+A [`Matcher`](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Matcher.html)
+tracks a search on one input. After a successful `matches()` or `find()`,
+`group()` returns the whole match and `group(1)` returns the first capture.
+Repeated calls to `find()` return successive non-overlapping matches. Reuse the
+compiled `Pattern`, but create a fresh matcher for each input.
 
 We also provide [`Demo.java`](code/src/main/java/regex/Demo.java) which contains additional examples.
 
@@ -276,26 +258,41 @@ Regex is widely supported across programming languages and tools, making it an e
 
 ## 14.8. Exercises
 
-Practise writing patterns in the `ex18-regex` module under the
-[exercises](exercises/README.md) folder. Both tasks start red and turn green when
-your patterns are correct. They line up with the two categories from §14.7:
-validation and extraction.
+Both tasks are in the `ex18-regex` [exercise module](exercises/README.md).
 
-- **Exercise 18a — Validators** (validation, `String.matches`). Complete the
-  three methods in
-  [Validators.java](exercises/ex18-regex/src/main/java/Validators.java) so they
-  recognise valid emails, phone numbers of the form `NNN-NNN-NNNN`, and legal
-  Java variable names, then run
+- **Exercise 18a: Validators.** Use `String.matches` in
+  [Validators.java](exercises/ex18-regex/src/main/java/Validators.java) to check
+  a simplified email format, `NNN-NNN-NNNN` phone numbers, and ASCII identifier
+  shape. Run
   [ValidatorsTest.java](exercises/ex18-regex/src/test/java/ValidatorsTest.java).
-- **Exercise 18b — Extractor** (extraction, `Pattern` and `Matcher`). Whole-string
-  matching isn't enough when you want to *pull* pieces out of a larger body of text, so
-  this task uses the classes from §14.6. In
-  [Extractor.java](exercises/ex18-regex/src/main/java/Extractor.java), implement
-  `findCourseCodes` (find every course code in a passage of text using
-  `matcher.find()`), `findCourseNumbers` (pull just the digits out using a
-  **capturing group**), and `maskEmails` (replace every email address with `***`).
-  Then run
+- **Exercise 18b: Extractor.** Use `Pattern` and `Matcher` in
+  [Extractor.java](exercises/ex18-regex/src/main/java/Extractor.java) to find
+  course codes, extract their three-digit numbers, and mask emails with `***`.
+  Run
   [ExtractorTest.java](exercises/ex18-regex/src/test/java/ExtractorTest.java).
-  Notice that the patterns are compiled once into `static final Pattern`
-  constants and reused — compiling a regex is real work, so you don't want to redo
-  it on every call.
+
+<details>
+<summary>Exercise 18 solutions</summary>
+
+18a. Pass each pattern to `String.matches`. Use the escaping rules in §14.6
+when writing these patterns as Java string literals.
+
+| Check | Pattern |
+| --- | --- |
+| Email | `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}` |
+| Phone | `\d{3}-\d{3}-\d{4}` |
+| Identifier shape | `[A-Za-z_$][A-Za-z0-9_$]*` |
+
+The identifier pattern allows digits only after the first character. It leaves
+out Unicode identifiers and accepts reserved names such as `class` and `_`.
+
+18b. In `[A-Z]{3}(\d{3})[A-Z]\d[A-Z]`, the parentheses capture the three-digit
+course number. When `find()` locates `CSC207H1F`, `group()` gives the full code
+and `group(1)` gives `207`. `EMAIL.matcher(text).replaceAll("***")` replaces each
+email match while preserving the rest of the text.
+
+```bash
+mvn -P exercises -pl exercises/ex18-regex test
+```
+
+</details>

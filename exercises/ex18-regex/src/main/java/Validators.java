@@ -1,27 +1,17 @@
-/**
- * Exercise (Chapter 14: Regular Expressions) — writing patterns and matching.
- *
- * Complete each method so it returns true exactly when the input matches the
- * described pattern. Use String's {@code matches(regex)} method, which returns
- * true iff the <em>whole</em> string matches the regular expression. Edit only
- * this file.
- *
- * Relevant reading: 14.6. Regex in Java (and 14.4 for identifier patterns).
- */
+/** Whole-string validation examples using {@link String#matches(String)}. */
 public class Validators {
 
   /**
    * Returns whether {@code input} looks like an email address: one or more
    * "local" characters (letters, digits, or any of {@code . _ % + -}), then an
-   * {@code @}, then a domain of letters/digits/{@code . -}, then a {@code .} and
-   * a top-level domain of at least two letters.
+   * {@code @}, then one or more domain characters (letters, digits, {@code .},
+   * or {@code -}), then a {@code .} and a top-level domain of at least two letters.
    *
    * @param input the string to test
-   * @return true iff input is a valid email address
+   * @return true iff input matches the simplified email pattern
    */
   public static boolean isEmail(String input) {
-    // TODO: return input.matches("...") with an appropriate pattern.
-    return false;
+    return input.matches("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
   }
 
   /**
@@ -33,20 +23,20 @@ public class Validators {
    * @return true iff input matches the phone-number pattern
    */
   public static boolean isPhoneNumber(String input) {
-    // TODO
-    return false;
+    return input.matches("\\d{3}-\\d{3}-\\d{4}");
   }
 
   /**
-   * Returns whether {@code input} is a legal Java variable name: it starts with
-   * a letter, underscore, or dollar sign, followed by any number of letters,
-   * digits, underscores, or dollar signs.
+   * Returns whether {@code input} has the shape of an ASCII Java identifier: it
+   * starts with a letter, underscore, or dollar sign, followed by zero or more
+   * letters, digits, underscores, or dollar signs.
+   *
+   * <p>This shape check does not reject reserved words or the lone underscore.
    *
    * @param input the string to test
-   * @return true iff input is a valid Java identifier
+   * @return true iff input matches the ASCII identifier pattern
    */
   public static boolean isJavaVariableName(String input) {
-    // TODO
-    return false;
+    return input.matches("[A-Za-z_$][A-Za-z0-9_$]*");
   }
 }
